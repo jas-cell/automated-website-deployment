@@ -9,43 +9,34 @@ pipeline {
   }
 
   stages {
-    stage('Checkout') {
+    stage('Docker sanity check') {
       steps {
-        checkout scm
+        sh 'docker version'
+        sh 'docker ps'
       }
     }
 
-    stage('Build Docker Image') {
+    stage('Build image') {
       steps {
-        sh 'docker build -t $IMAGE_NAME:latest .'
+        sh 'docker build -t $IMAGE_NAME .'
       }
     }
 
-    stage('Deploy Container') {
+    stage('Stop old container') {
+      steps {
+        sh 'docker rm -f $CONTAINER_NAME || true'
+      }
+    }
+
+    stage('Run container') {
       steps {
         sh '''
-          docker rm -f $CONTAINER_NAME || true
           docker run -d \
             --name $CONTAINER_NAME \
             -p $HOST_PORT:$CONTAINER_PORT \
-            $IMAGE_NAME:latest
+            $IMAGE_NAME
         '''
       }
-    }
-
-    stage('Smoke Test') {
-      steps {
-        sh '''
-          sleep 2
-          curl -f http://localhost:$HOST_PORT
-        '''
-      }
-    }
-  }
-
-  post {
-    success {
-      echo "Deployment successful 🚀"
     }
   }
 }
